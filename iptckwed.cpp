@@ -44,8 +44,11 @@ void parsekeywords(string kwlist, struct kwoption *kwop)
 		end = kwlist.find_first_of(',', pos);
 		if (pos < end) {
 			string kw = kwlist.substr(pos, end - pos);
-			kwop->m.insert(pair<string,unsigned int>(kw, kwop->v.size()));
-			kwop->v.push_back(pair<string,bool>(kw, false));
+
+			if (kwop->m.find(kw) == kwop->m.end()) {
+				kwop->m.insert(pair<string,unsigned int>(kw, kwop->v.size()));
+				kwop->v.push_back(pair<string,bool>(kw, false));
+			}
 		}
 	}
 }
