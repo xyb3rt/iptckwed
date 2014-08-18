@@ -10,10 +10,10 @@ iptckwed is built using the commands:
     # make install
 
 Please note, that the latter one requires root privileges.
-By default, sxiv is installed using the prefix "/usr/local", so the full path
-of the executable will be "/usr/local/bin/sxiv".
+By default, iptckwed is installed using the prefix "/usr/local", so the full
+path of the executable will be "/usr/local/bin/iptckwed".
 
-You can install sxiv into a directory of your choice by changing the second
+You can install iptckwed into a directory of your choice by changing the second
 command to:
 
     # make PREFIX="/your/dir" install
