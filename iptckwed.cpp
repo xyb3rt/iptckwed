@@ -8,27 +8,33 @@
 
 using namespace std;
 
+struct mflag {
+	bool all;
+	bool any;
+};
+
 struct kwoption {
 	map<string,unsigned int> m;
 	vector<pair<string,bool> > v;
 };
 
 struct options {
-	bool all;
-	bool any;
 	bool clear;
 	bool list;
 	bool quiet;
+	struct mflag m;
+	struct mflag x;
 	struct kwoption add;
 	struct kwoption remove;
 	struct kwoption match;
+	struct kwoption exclude;
 };
 
 static const char *cmd = "iptckwed";
 
 void usage()
 {
-	fprintf(stderr, "usage: %s [-chlqv] [-aMmr KEYWORDS] FILES...\n", cmd);
+	fprintf(stderr, "usage: %s [-chlqv] [-aMmrXx KEYWORDS] FILES...\n", cmd);
 }
 
 void version()
@@ -53,16 +59,16 @@ void parsekeywords(string kwlist, struct kwoption *kwop)
 	}
 }
 
-void resetkeywords(struct kwoption *kwop, bool *all, bool *any)
+void resetkeywords(struct kwoption *kwop, struct mflag *m)
 {
-	*all = true;
-	*any = false;
+	m->all = true;
+	m->any = false;
 
 	for (map<string,unsigned int>::iterator t = kwop->m.begin(); t != kwop->m.end(); t++) {
 		if (kwop->v[t->second].second)
-			*any = true;
+			m->any = true;
 		else
-			*all = false;
+			m->all = false;
 		kwop->v[t->second].second = false;
 	}
 }
@@ -70,13 +76,14 @@ void resetkeywords(struct kwoption *kwop, bool *all, bool *any)
 int main(int argc, char *argv[])
 {
 	int fi, opt;
-	bool all, any;
+	struct mflag m, x, dummy;
 	struct options op;
 
 	Exiv2::LogMsg::setLevel(Exiv2::LogMsg::error);
-	op.all = op.any = op.clear = op.list = op.quiet = false;
+	op.clear = op.list = op.quiet = false;
+	op.m.all = op.m.any = op.x.all = op.x.any = false;
 
-	while ((opt = getopt(argc, argv, "a:chlM:m:qr:v")) != -1) {
+	while ((opt = getopt(argc, argv, "a:chlM:m:qr:vX:x:")) != -1) {
 		switch (opt) {
 			case '?':
 			case 'h':
@@ -89,7 +96,7 @@ int main(int argc, char *argv[])
 				op.clear = true;
 				break;
 			case 'l':
-				if (op.all || op.any || op.list) {
+				if (op.m.all || op.m.any || op.list) {
 					fprintf(stderr, "%s: only one -l/-M/-m option allowed\n", cmd);
 					exit(EXIT_FAILURE);
 				}
@@ -97,14 +104,14 @@ int main(int argc, char *argv[])
 				break;
 			case 'M':
 			case 'm':
-				if (op.all || op.any || op.list) {
+				if (op.m.all || op.m.any || op.list) {
 					fprintf(stderr, "%s: only one -l/-M/-m option allowed\n", cmd);
 					exit(EXIT_FAILURE);
 				}
 				if (opt == 'M')
-					op.all = true;
+					op.m.all = true;
 				else
-					op.any = true;
+					op.m.any = true;
 				parsekeywords(optarg, &op.match);
 				break;
 			case 'q':
@@ -116,6 +123,18 @@ int main(int argc, char *argv[])
 			case 'v':
 				version();
 				exit(EXIT_SUCCESS);
+			case 'X':
+			case 'x':
+				if (op.x.any || op.x.all) {
+					fprintf(stderr, "%s: only one -X/-x option allowed\n", cmd);
+					exit(EXIT_FAILURE);
+				}
+				if (opt == 'X')
+					op.x.all = true;
+				else
+					op.x.any = true;
+				parsekeywords(optarg, &op.exclude);
+				break;
 		}
 	}
 	if (optind == argc) {
@@ -146,6 +165,8 @@ int main(int argc, char *argv[])
 						op.add.v[mkw->second].second = true;
 					if ((mkw = op.match.m.find(tstr)) != op.match.m.end())
 						op.match.v[mkw->second].second = true;
+					if ((mkw = op.exclude.m.find(tstr)) != op.exclude.m.end())
+						op.exclude.v[mkw->second].second = true;
 					kw++;
 				}
 			}
@@ -163,12 +184,13 @@ int main(int argc, char *argv[])
 				image->setIptcData(iptcData);
 				image->writeMetadata();
 			}
-			resetkeywords(&op.add, &all, &any);
-			resetkeywords(&op.match, &all, &any);
+			resetkeywords(&op.add, &dummy);
+			resetkeywords(&op.match, &m);
+			resetkeywords(&op.exclude, &x);
 
-			if ((op.all && all) || (op.any && any)) {
-				printf("%s\n", argv[fi]);
-			} else if (op.list) {
+			if ((op.x.all && x.all) || (op.x.any && x.any))
+				continue;
+			if (op.list) {
 				bool listed = false;
 				for (kw = iptcData.findKey(key); kw != iptcData.end(); kw++) {
 					const char *tstr = kw->toString().c_str();
@@ -177,6 +199,10 @@ int main(int argc, char *argv[])
 				}
 				if (listed)
 					printf("\n");
+			} else if ((op.m.all && m.all) || (op.m.any && m.any) ||
+			           (!op.m.all && !op.m.any && (op.x.all || op.x.any)))
+			{
+				printf("%s\n", argv[fi]);
 			}
 		}
 		catch (Exiv2::AnyError &e) {
