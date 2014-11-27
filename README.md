@@ -22,7 +22,7 @@ command to:
 Usage
 -----
 
-    iptckwed [-chlq] [-aMmrXx KEYWORDS] FILES...
+    iptckwed [-chilq] [-aMmrXx KEYWORDS] [FILES]...
 
 **Options:**
 
@@ -30,6 +30,7 @@ Usage
     -c              Remove all keywords from files
     -h              Print help screen and exit
     -l              Print files and their keywords
+    -i              Read file names from stdin
     -M/-m KEYWORDS  Print files which match all/any keyword(s)
     -r KEYWORDS     Remove keywords from files
     -q              Be quiet, disable warnings

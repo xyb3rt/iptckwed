@@ -1,4 +1,4 @@
-VERSION  = git-20140823
+VERSION  = git-20141127
 PREFIX   = /usr/local
 
 CXX      = g++

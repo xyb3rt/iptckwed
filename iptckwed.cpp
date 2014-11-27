@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
 #include <string>
 #include <unistd.h>
 #include <map>
@@ -34,7 +35,7 @@ static const char *cmd = "iptckwed";
 
 void usage()
 {
-	fprintf(stderr, "usage: %s [-chlqv] [-aMmrXx KEYWORDS] FILES...\n", cmd);
+	fprintf(stderr, "usage: %s [-chilqv] [-aMmrXx KEYWORDS] [FILES]...\n", cmd);
 }
 
 void version()
@@ -75,15 +76,17 @@ void resetkeywords(struct kwoption *kwop, struct mflag *m)
 
 int main(int argc, char *argv[])
 {
-	int fi, opt;
+	int opt;
 	struct mflag m, x, dummy;
 	struct options op;
+	vector<string> files;
+	vector<string>::const_iterator fi;
 
 	Exiv2::LogMsg::setLevel(Exiv2::LogMsg::error);
 	op.clear = op.list = op.quiet = false;
 	op.m.all = op.m.any = op.x.all = op.x.any = false;
 
-	while ((opt = getopt(argc, argv, "a:chlM:m:qr:vX:x:")) != -1) {
+	while ((opt = getopt(argc, argv, "a:chilM:m:qr:vX:x:")) != -1) {
 		switch (opt) {
 			case '?':
 			case 'h':
@@ -94,6 +97,10 @@ int main(int argc, char *argv[])
 				break;
 			case 'c':
 				op.clear = true;
+				break;
+			case 'i':
+				for (string line; getline(cin, line); )
+					files.push_back(line);
 				break;
 			case 'l':
 				if (op.m.all || op.m.any || op.list) {
@@ -137,16 +144,19 @@ int main(int argc, char *argv[])
 				break;
 		}
 	}
-	if (optind == argc) {
+	for (opt = optind; opt < argc; opt++)
+		files.push_back(argv[opt]);
+	if (files.empty()) {
 		fprintf(stderr, "%s: no files to open\n", cmd);
 		exit(EXIT_FAILURE);
 	}
-	for (fi = optind; fi < argc; fi++) {
+
+	for (fi = files.begin(); fi != files.end(); fi++) {
 		try {
 			bool write = false;
 			map<string,unsigned int>::iterator mkw;
 			vector<pair<string,bool> >::iterator vkw;
-			Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(argv[fi]);
+			Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open(*fi);
 
 			if (image.get() == 0)
 				continue;
@@ -194,7 +204,7 @@ int main(int argc, char *argv[])
 				bool listed = false;
 				for (kw = iptcData.findKey(key); kw != iptcData.end(); kw++) {
 					const char *tstr = kw->toString().c_str();
-					printf("%s%s%s", listed ? "" : argv[fi], listed ? "," : "\t", tstr);
+					printf("%s%s%s", listed ? "" : fi->c_str(), listed ? "," : "\t", tstr);
 					listed = true;
 				}
 				if (listed)
@@ -202,7 +212,7 @@ int main(int argc, char *argv[])
 			} else if ((op.m.all && m.all) || (op.m.any && m.any) ||
 			           (!op.m.all && !op.m.any && (op.x.all || op.x.any)))
 			{
-				printf("%s\n", argv[fi]);
+				printf("%s\n", fi->c_str());
 			}
 		}
 		catch (Exiv2::AnyError &e) {
