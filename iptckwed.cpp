@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 	vector<string> files;
 	vector<string>::const_iterator fi;
 
-	Exiv2::LogMsg::setLevel(Exiv2::LogMsg::error);
+	Exiv2::LogMsg::setLevel(Exiv2::LogMsg::mute);
 	op.clear = op.list = op.quiet = false;
 	op.m.all = op.m.any = op.x.all = op.x.any = false;
 
